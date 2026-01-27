@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Clock } from 'lucide-react'
+import { ArrowLeft, Clock, Download } from 'lucide-react'
 import Link from 'next/link'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface ReportData {
   summary: {
@@ -39,7 +41,8 @@ export default function Reports() {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('/api/reports')
+      const key = new URLSearchParams(window.location.search).get('key')
+      const response = await fetch(`/api/reports${key ? `?key=${key}` : ''}`)
       const result = await response.json()
       setData(result)
     } catch (error) {
@@ -54,124 +57,296 @@ export default function Reports() {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
 
+  const formatFullDateTime = (dateString: Date) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: 'numeric', 
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  }
+
+  const exportToPDF = () => {
+    if (!data) return
+
+    const doc = new jsPDF()
+    const today = new Date().toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+
+    // Title
+    doc.setFontSize(20)
+    doc.setTextColor(40, 40, 40)
+    doc.text('MABDC Gala Night Attendance Report', 105, 20, { align: 'center' })
+    
+    doc.setFontSize(12)
+    doc.setTextColor(100, 100, 100)
+    doc.text(today, 105, 28, { align: 'center' })
+
+    // Summary
+    doc.setFontSize(14)
+    doc.setTextColor(40, 40, 40)
+    doc.text(`Total Checked In: ${data.summary.total} / ${data.summary.totalStudents}`, 14, 42)
+
+    // Grade summary line
+    let summaryY = 50
+    doc.setFontSize(10)
+    const gradeSummary = data.gradeData
+      .map(g => `G${g.grade}: ${g.checkedIn}/${g.total}`)
+      .join('   |   ')
+    doc.text(gradeSummary, 14, summaryY)
+
+    let currentY = 60
+
+    // For each grade with checked-in students
+    data.gradeData.filter(g => g.checkedIn > 0).forEach((grade) => {
+      // Check if we need a new page
+      if (currentY > 250) {
+        doc.addPage()
+        currentY = 20
+      }
+
+      // Grade header
+      doc.setFontSize(12)
+      doc.setTextColor(40, 40, 40)
+      doc.text(`Grade ${grade.grade} (${grade.checkedIn} checked in)`, 14, currentY)
+      currentY += 6
+
+      // Table for this grade
+      const tableData = grade.students.map((student, index) => [
+        (index + 1).toString(),
+        student.fullName,
+        formatFullDateTime(student.checkinTime)
+      ])
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['#', 'Student Name', 'Check-in Time']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+        styles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 90 },
+          2: { cellWidth: 60 }
+        },
+        margin: { left: 14, right: 14 }
+      })
+
+      currentY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
+    })
+
+    // Footer with generation time
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(
+        `Generated: ${new Date().toLocaleString()} | Page ${i} of ${pageCount}`,
+        105,
+        290,
+        { align: 'center' }
+      )
+    }
+
+    doc.save(`MABDC_Gala_Attendance_${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1d3a] to-[#0f1428] flex items-center justify-center">
-        <div className="text-2xl text-[#d4af37] animate-pulse">Loading reports...</div>
+      <div className="min-h-screen relative overflow-hidden" style={{ background: '#000' }}>
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110" style={{ backgroundImage: 'url(/bg.png)' }} />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-8 border border-white/10">
+            <div className="text-2xl text-[#d4af37] animate-pulse">Loading reports...</div>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1d3a] to-[#0f1428] flex items-center justify-center">
-        <div className="text-2xl text-[#e8e8e8]">Failed to load reports</div>
+      <div className="min-h-screen relative overflow-hidden" style={{ background: '#000' }}>
+        <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110" style={{ backgroundImage: 'url(/bg.png)' }} />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="backdrop-blur-xl bg-white/5 rounded-2xl p-8 border border-white/10">
+            <div className="text-2xl text-white/80">Failed to load reports</div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1d3a] to-[#0f1428]">
+    <div className="min-h-screen relative overflow-hidden" style={{ background: '#000' }}>
+      {/* Background */}
+      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110" style={{ backgroundImage: 'url(/bg.png)' }} />
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
+      
+      {/* Shimmer Overlay */}
+      <div className="shimmer-overlay" />
+      
+      {/* Sparkle Effects */}
+      <div className="sparkle-container">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="sparkle"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${2 + Math.random() * 3}s`,
+            }}
+          />
+        ))}
+      </div>
+      
+      {/* Glow Orbs */}
+      <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />
+      <div className="glow-orb" style={{ width: '200px', height: '200px', top: '60%', right: '10%', animationDelay: '2s' }} />
+      <div className="glow-orb" style={{ width: '150px', height: '150px', bottom: '20%', left: '30%', animationDelay: '4s' }} />
+
       {/* Header */}
-      <header className="bg-gradient-to-b from-[#0d1129] to-[#1a1f3d] border-b-4 border-[#d4af37] shadow-[0_4px_20px_rgba(212,175,55,0.3)]">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-4xl md:text-5xl font-light text-[#d4af37] tracking-wider text-center mb-2" style={{ fontFamily: 'Georgia, serif', textShadow: '0 0 20px rgba(212,175,55,0.5)' }}>
-            📊 JS Prom Night Reports
-          </h1>
-          <p className="text-[#c0c0c0] text-lg italic tracking-wide text-center">Attendance Overview</p>
-        </div>
+      <header className="relative z-10 pt-8 pb-6">
+        <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
+          Reports Dashboard
+        </h1>
+        <p className="text-center text-[#a0a0a0] text-lg mt-2 tracking-widest uppercase">Attendance Overview</p>
+        <div className="w-64 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mx-auto mt-4"></div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <Link 
-          href="/"
-          className="inline-flex items-center gap-2 px-6 py-3 mb-8 bg-[rgba(192,192,192,0.2)] text-[#c0c0c0] rounded-xl text-lg border border-[rgba(192,192,192,0.3)] hover:bg-[rgba(212,175,55,0.2)] hover:border-[#d4af37] hover:text-[#d4af37] transition-all"
-        >
-          <ArrowLeft size={20} />
-          Back to Check-In
-        </Link>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-6">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <Link 
+            href="/"
+            className="group inline-flex items-center gap-2 px-6 py-3 backdrop-blur-xl bg-white/5 text-white/80 rounded-2xl text-lg border border-white/10 hover:bg-white/10 hover:border-[#d4af37]/30 hover:text-[#d4af37] transition-all duration-300"
+          >
+            <ArrowLeft size={20} />
+            Back to Check-In
+          </Link>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-          {/* Grand Total */}
-          <div className="md:col-span-3 lg:col-span-1 bg-gradient-to-br from-[rgba(26,31,61,0.95)] to-[rgba(13,17,41,0.95)] p-6 rounded-2xl border-2 border-[#d4af37] text-center shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-            <div className="text-6xl font-bold text-[#d4af37] mb-2" style={{ textShadow: '0 0 10px rgba(212,175,55,0.5)' }}>
-              {data.summary.total}
+          <button
+            onClick={exportToPDF}
+            className="group inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#d4af37] to-[#c5a028] text-black rounded-2xl text-lg font-semibold shadow-[0_4px_24px_rgba(212,175,55,0.3)] hover:shadow-[0_8px_32px_rgba(212,175,55,0.5)] hover:scale-105 transition-all duration-300"
+          >
+            <Download size={20} />
+            Download PDF
+          </button>
+        </div>
+
+        {/* Summary Cards - Hero Section */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+          {/* Grand Total - Featured Card */}
+          <div className="col-span-2 md:col-span-4 lg:col-span-1 relative overflow-hidden rounded-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#d4af37]/20 via-transparent to-[#d4af37]/10"></div>
+            <div className="relative backdrop-blur-xl bg-black/40 border-2 border-[#d4af37]/50 rounded-2xl p-6 text-center h-full flex flex-col justify-center">
+              <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37]" style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.3))' }}>
+                {data.summary.total}
+              </div>
+              <div className="text-sm text-white/50 mt-1">of {data.summary.totalStudents}</div>
+              <div className="text-xs text-[#d4af37] uppercase tracking-widest mt-2">Total</div>
             </div>
-            <div className="text-xl text-[#c0c0c0] italic mb-1">Total Checked In</div>
-            <div className="text-sm text-[#7a7a7a]">out of {data.summary.totalStudents}</div>
           </div>
 
           {/* Grade Totals */}
           {data.gradeData.map((grade) => (
-            <div key={grade.grade} className="bg-gradient-to-br from-[rgba(26,31,61,0.95)] to-[rgba(13,17,41,0.95)] p-6 rounded-2xl border border-[rgba(212,175,55,0.3)] text-center shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-              <div className="text-5xl font-bold text-[#d4af37] mb-2">{grade.checkedIn}</div>
-              <div className="text-lg text-[#c0c0c0] italic">Grade {grade.grade}</div>
-              <div className="text-sm text-[#7a7a7a]">of {grade.total}</div>
+            <div key={grade.grade} className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/20 to-[#f4e4bc]/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition-all duration-300"></div>
+              <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 group-hover:border-[#d4af37]/30 rounded-2xl p-4 text-center transition-all duration-300">
+                <div className="text-3xl font-bold text-[#d4af37]">{grade.checkedIn}</div>
+                <div className="text-xs text-white/40 mt-1">of {grade.total}</div>
+                <div className="text-sm text-white/70 mt-2">Grade {grade.grade}</div>
+                {/* Mini progress */}
+                <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] rounded-full transition-all duration-500"
+                    style={{ width: `${grade.total > 0 ? (grade.checkedIn / grade.total) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Grade Sections */}
-          <div className="lg:col-span-2 space-y-8">
-            {data.gradeData.filter(g => g.checkedIn > 0).map((grade) => (
-              <div key={grade.grade} className="bg-gradient-to-br from-[rgba(26,31,61,0.95)] to-[rgba(13,17,41,0.95)] p-7 rounded-2xl border border-[rgba(212,175,55,0.25)] shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
-                <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-[rgba(212,175,55,0.3)]">
-                  <h3 className="text-3xl text-[#d4af37] font-medium" style={{ fontFamily: 'Georgia, serif' }}>
-                    Grade {grade.grade}
-                  </h3>
-                  <div className="px-6 py-2 bg-[rgba(212,175,55,0.2)] text-[#c0c0c0] rounded-full text-lg border border-[rgba(212,175,55,0.4)]">
-                    {grade.checkedIn} student{grade.checkedIn !== 1 ? 's' : ''}
+        {/* Grade Sections with Students */}
+        <div className="space-y-6">
+          {data.gradeData.filter(g => g.checkedIn > 0).map((grade) => (
+            <div key={grade.grade} className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 blur-sm transition-all duration-300"></div>
+              <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                {/* Grade Header */}
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4af37] to-[#c5a028] flex items-center justify-center text-black text-xl font-bold">
+                      {grade.grade}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl text-white font-medium">Grade {grade.grade}</h3>
+                      <p className="text-white/40 text-sm">Students checked in</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-[#d4af37]">{grade.checkedIn}</div>
+                      <div className="text-white/40 text-sm">of {grade.total}</div>
+                    </div>
+                    <div className="w-16 h-16 rounded-full border-4 border-white/10 flex items-center justify-center relative">
+                      <svg className="absolute inset-0 w-full h-full -rotate-90">
+                        <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                        <circle 
+                          cx="32" cy="32" r="28" fill="none" stroke="#d4af37" strokeWidth="4"
+                          strokeDasharray={`${(grade.checkedIn / grade.total) * 176} 176`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="text-sm font-bold text-[#d4af37]">{Math.round((grade.checkedIn / grade.total) * 100)}%</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {grade.students.map((student) => (
-                    <div key={student.id} className="flex justify-between items-center p-4 bg-[rgba(13,17,41,0.7)] rounded-xl border border-[rgba(192,192,192,0.15)] hover:bg-[rgba(26,31,61,0.8)] hover:border-[rgba(212,175,55,0.3)] transition-all">
-                      <div className="text-xl text-[#e8e8e8]">{student.fullName}</div>
-                      <div className="text-lg text-[#4ade80] italic">{formatTime(student.checkinTime)}</div>
+                {/* Students Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {grade.students.map((student, index) => (
+                    <div 
+                      key={student.id} 
+                      className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 hover:bg-white/5 hover:border-[#d4af37]/20 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 text-sm font-medium">
+                          {index + 1}
+                        </span>
+                        <span className="text-white/90 truncate">{student.fullName}</span>
+                      </div>
+                      <div className="flex-shrink-0 flex items-center gap-2 text-[#22c55e] text-sm font-medium">
+                        <Clock size={14} />
+                        {formatTime(student.checkinTime)}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
-
-            {data.summary.total === 0 && (
-              <div className="text-center py-16 text-[#7a7a7a] text-2xl italic">
-                No students have checked in yet
-              </div>
-            )}
-          </div>
-
-          {/* Recent Check-ins Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-gradient-to-br from-[rgba(26,31,61,0.95)] to-[rgba(13,17,41,0.95)] p-6 rounded-2xl border border-[rgba(212,175,55,0.3)] shadow-[0_4px_16px_rgba(0,0,0,0.3)] sticky top-6">
-              <h3 className="text-2xl text-[#d4af37] font-medium mb-5 pb-3 border-b-2 border-[rgba(212,175,55,0.3)]" style={{ fontFamily: 'Georgia, serif' }}>
-                Recent Check-Ins
-              </h3>
-
-              <div className="space-y-3">
-                {data.recentCheckins.length === 0 ? (
-                  <div className="text-center py-8 text-[#7a7a7a] italic">No check-ins yet</div>
-                ) : (
-                  data.recentCheckins.map((checkin, index) => (
-                    <div key={index} className="p-4 bg-[rgba(13,17,41,0.7)] rounded-xl border border-[rgba(192,192,192,0.15)]">
-                      <div className="text-lg text-[#e8e8e8] mb-1">{checkin.fullName}</div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-[#d4af37]">Grade {checkin.grade}</span>
-                        <span className="text-[#4ade80] flex items-center gap-1">
-                          <Clock size={14} />
-                          {formatTime(checkin.checkinTime)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </div>
-          </div>
+          ))}
+
+          {data.summary.total === 0 && (
+            <div className="backdrop-blur-xl bg-white/5 rounded-3xl p-16 text-center border border-white/10">
+              <div className="text-white/30 text-2xl">No students have checked in yet</div>
+            </div>
+          )}
         </div>
       </main>
     </div>
