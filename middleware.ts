@@ -2,17 +2,24 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Handle admin API routes
+  // Skip protection for admin routes - they handle their own authentication
   if (request.nextUrl.pathname.startsWith('/api/admin')) {
-    // Let admin API routes handle their own authentication
     return NextResponse.next()
   }
 
-  // Handle reports page and API
+  // Apply secret key protection to reports and other protected routes
   const secretKey = process.env.SECRET_KEY
   const providedKey = request.nextUrl.searchParams.get('key') || request.headers.get('x-secret-key')
 
   if (!secretKey || providedKey !== secretKey) {
+    // Return JSON response for API routes
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      return new NextResponse(JSON.stringify({ error: 'Forbidden' }), { 
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    // Return text response for pages
     return new NextResponse('Forbidden', { status: 403 })
   }
 
@@ -20,5 +27,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/reports', '/api/reports'],
+  matcher: ['/reports', '/api/:path*'],
 }
