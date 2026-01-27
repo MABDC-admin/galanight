@@ -34,6 +34,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [reportData, setReportData] = useState<ReportData | null>(null)
+  const [activeTab, setActiveTab] = useState<'reports' | 'checkins'>('reports')
 
   const searchStudents = useCallback(async (query: string) => {
     if (query.length < 1) {
@@ -144,6 +145,19 @@ export default function Home() {
       <div className="glow-orb" style={{ width: '200px', height: '200px', top: '60%', right: '10%', animationDelay: '2s' }} />
       <div className="glow-orb" style={{ width: '150px', height: '150px', bottom: '20%', left: '30%', animationDelay: '4s' }} />
 
+      {/* Reports Dashboard Button - Top Right */}
+      <Link 
+        href="/reports?key=gala2026"
+        className="fixed top-6 right-6 z-50 group overflow-hidden rounded-xl transition-all duration-300 hover:scale-105"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="relative backdrop-blur-xl bg-black/60 border border-[#d4af37]/50 rounded-xl px-5 py-3 group-hover:bg-transparent transition-all">
+          <span className="text-sm font-bold tracking-wider text-[#d4af37] group-hover:text-black transition-colors">
+            REPORTS DASHBOARD
+          </span>
+        </div>
+      </Link>
+
       {/* Header */}
       <header className="relative z-10 pt-8 pb-6">
         <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
@@ -250,61 +264,6 @@ export default function Home() {
 
           {/* Right Panel - Reports Dashboard */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Reports Dashboard Button - Neomorphism */}
-            <Link 
-              href="/reports?key=gala2026"
-              className="group block relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative backdrop-blur-xl bg-white/5 border border-[#d4af37]/30 rounded-2xl p-5 text-center group-hover:bg-transparent transition-all">
-                <span className="text-xl font-bold tracking-wider text-[#d4af37] group-hover:text-black transition-colors">
-                  REPORTS DASHBOARD
-                </span>
-              </div>
-            </Link>
-
-            {/* Reports Summary - Glassmorphism Card */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-              <h2 className="text-xl text-[#d4af37] font-semibold mb-4 flex items-center gap-2" style={{ fontFamily: 'Georgia, serif' }}>
-                <div className="w-2 h-2 rounded-full bg-[#d4af37]"></div>
-                Live Reports
-              </h2>
-              <div className="space-y-2">
-                {reportData?.gradeData.slice().reverse().map((grade) => (
-                  <div key={grade.grade} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                    <span className="text-white/80 font-medium">Grade {grade.grade}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#d4af37] font-bold">{grade.checkedIn}</span>
-                      <span className="text-white/30">/</span>
-                      <span className="text-white/50">{grade.total}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Check-ins - Material Card */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-              <h2 className="text-lg text-[#d4af37] font-semibold mb-4 flex items-center gap-2" style={{ fontFamily: 'Georgia, serif' }}>
-                <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></div>
-                Recent Check-ins
-              </h2>
-              <div className="space-y-3">
-                {reportData?.recentCheckins.slice(0, 5).map((checkin, index) => (
-                  <div key={index} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white/90 text-sm truncate">{checkin.fullName}</div>
-                      <div className="text-white/40 text-xs">Grade {checkin.grade}</div>
-                    </div>
-                    <span className="text-[#22c55e] text-sm font-medium">{formatTime(checkin.checkinTime)}</span>
-                  </div>
-                ))}
-                {(!reportData?.recentCheckins || reportData.recentCheckins.length === 0) && (
-                  <div className="text-white/30 text-center py-4 text-sm">No check-ins yet</div>
-                )}
-              </div>
-            </div>
-
             {/* Grand Total - Hero Card */}
             <div className="relative overflow-hidden rounded-2xl">
               <div className="absolute inset-0 bg-gradient-to-br from-[#d4af37]/20 via-transparent to-[#d4af37]/10"></div>
@@ -324,6 +283,67 @@ export default function Home() {
                     style={{ width: `${reportData ? (reportData.summary.total / reportData.summary.totalStudents) * 100 : 0}%` }}
                   ></div>
                 </div>
+              </div>
+            </div>
+
+            {/* Slider Widget - Live Reports & Recent Check-ins */}
+            <div className="relative overflow-hidden rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10">
+              <div className="tabs flex border-b border-white/10">
+                <button 
+                  onClick={() => setActiveTab('reports')}
+                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                    activeTab === 'reports' 
+                      ? 'text-[#d4af37] border-b-2 border-[#d4af37]' 
+                      : 'text-white/70 border-b-2 border-transparent hover:text-[#d4af37]'
+                  }`}
+                >
+                  Live Reports
+                </button>
+                <button 
+                  onClick={() => setActiveTab('checkins')}
+                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                    activeTab === 'checkins' 
+                      ? 'text-[#22c55e] border-b-2 border-[#22c55e]' 
+                      : 'text-white/70 border-b-2 border-transparent hover:text-[#22c55e]'
+                  }`}
+                >
+                  Recent Check-ins
+                </button>
+              </div>
+              <div className="p-5">
+                {/* Live Reports Tab */}
+                {activeTab === 'reports' && (
+                  <div className="space-y-2">
+                    {reportData?.gradeData.slice().reverse().map((grade) => (
+                      <div key={grade.grade} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                        <span className="text-white/80 font-medium">Grade {grade.grade}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[#d4af37] font-bold">{grade.checkedIn}</span>
+                          <span className="text-white/30">/</span>
+                          <span className="text-white/50">{grade.total}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Recent Check-ins Tab */}
+                {activeTab === 'checkins' && (
+                  <div className="space-y-3">
+                    {reportData?.recentCheckins.slice(0, 5).map((checkin, index) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white/90 text-sm truncate">{checkin.fullName}</div>
+                          <div className="text-white/40 text-xs">Grade {checkin.grade}</div>
+                        </div>
+                        <span className="text-[#22c55e] text-sm font-medium">{formatTime(checkin.checkinTime)}</span>
+                      </div>
+                    ))}
+                    {(!reportData?.recentCheckins || reportData.recentCheckins.length === 0) && (
+                      <div className="text-white/30 text-center py-4 text-sm">No check-ins yet</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
