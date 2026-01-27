@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Clock, Download } from 'lucide-react'
+import { ArrowLeft, Clock, Download, User, Mail } from 'lucide-react'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -19,12 +19,14 @@ interface ReportData {
     students: Array<{
       id: number
       fullName: string
+      avatarUrl: string | null
       checkinTime: Date
     }>
   }>
   recentCheckins: Array<{
     fullName: string
     grade: number
+    avatarUrl: string | null
     checkinTime: Date
   }>
 }
@@ -32,7 +34,9 @@ interface ReportData {
 export default function Reports() {
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [emailLoading, setEmailLoading] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Set isClient to true on mount to ensure client-side rendering
   useEffect(() => {
@@ -65,32 +69,41 @@ export default function Reports() {
 
   const formatFullDateTime = (dateString: Date) => {
     const date = new Date(dateString)
-    return date.toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
       year: 'numeric',
-      hour: 'numeric', 
+      hour: 'numeric',
       minute: '2-digit',
       second: '2-digit'
     })
   }
 
-  const exportToPDF = () => {
-    if (!data) return
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2)
+  }
+
+  const generatePDF = () => {
+    if (!data) return null
 
     const doc = new jsPDF()
-    const today = new Date().toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const today = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     })
 
     // Title
     doc.setFontSize(20)
     doc.setTextColor(40, 40, 40)
     doc.text('MABDC Gala Night Attendance Report', 105, 20, { align: 'center' })
-    
+
     doc.setFontSize(12)
     doc.setTextColor(100, 100, 100)
     doc.text(today, 105, 28, { align: 'center' })
@@ -146,11 +159,11 @@ export default function Reports() {
         margin: { left: 14, right: 14 }
       })
 
-      currentY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10
+      currentY = (doc as any).lastAutoTable.finalY + 10
     })
 
     // Footer with generation time
-    const pageCount = doc.getNumberOfPages()
+    const pageCount = (doc as any).internal.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
       doc.setFontSize(8)
@@ -163,7 +176,52 @@ export default function Reports() {
       )
     }
 
+    return doc
+  }
+
+  const exportToPDF = () => {
+    const doc = generatePDF()
+    if (!doc) return
     doc.save(`MABDC_Gala_Attendance_${new Date().toISOString().split('T')[0]}.pdf`)
+  }
+
+  const sendToEmail = async () => {
+    const doc = generatePDF()
+    if (!doc) return
+
+    setEmailLoading(true)
+    try {
+      // Convert PDF to base64
+      const pdfBase64 = doc.output('datauristring').split(',')[1]
+
+      const key = new URLSearchParams(window.location.search).get('key')
+      const response = await fetch(`/api/reports/email${key ? `?key=${key}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportData: data,
+          email: 'sottodennis@gmail.com',
+          pdfAttachment: pdfBase64,
+          filename: `MABDC_Gala_Attendance_${new Date().toISOString().split('T')[0]}.pdf`
+        })
+      })
+
+      const result = await response.json()
+      if (response.ok) {
+        showToast('Report sent to email successfully!', 'success')
+      } else {
+        showToast(result.error || 'Failed to send email', 'error')
+      }
+    } catch (error) {
+      showToast('Error sending email', 'error')
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
   }
 
   if (loading) {
@@ -199,10 +257,10 @@ export default function Reports() {
       {/* Background */}
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110" style={{ backgroundImage: 'url(/bg.png)' }} />
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
-      
+
       {/* Shimmer Overlay */}
       <div className="shimmer-overlay" />
-      
+
       {/* Sparkle Effects - Rendered only on client */}
       {isClient && (
         <div className="sparkle-container">
@@ -220,7 +278,7 @@ export default function Reports() {
           ))}
         </div>
       )}
-      
+
       {/* Glow Orbs */}
       <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />
       <div className="glow-orb" style={{ width: '200px', height: '200px', top: '60%', right: '10%', animationDelay: '2s' }} />
@@ -228,7 +286,7 @@ export default function Reports() {
 
       {/* Header */}
       <header className="relative z-10 pt-8 pb-6">
-        <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
+        <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light animate-reveal-up animate-title-shimmer" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
           Reports Dashboard
         </h1>
         <p className="text-center text-[#a0a0a0] text-lg mt-2 tracking-widest uppercase">Attendance Overview</p>
@@ -239,7 +297,7 @@ export default function Reports() {
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-6">
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4 mb-8">
-          <Link 
+          <Link
             href="/"
             className="group inline-flex items-center gap-2 px-6 py-3 backdrop-blur-xl bg-white/5 text-white/80 rounded-2xl text-lg border border-white/10 hover:bg-white/10 hover:border-[#d4af37]/30 hover:text-[#d4af37] transition-all duration-300"
           >
@@ -254,7 +312,27 @@ export default function Reports() {
             <Download size={20} />
             Download PDF
           </button>
+
+          <button
+            onClick={sendToEmail}
+            disabled={emailLoading}
+            className={`group inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-lg font-semibold shadow-lg transition-all duration-300 ${emailLoading
+              ? 'bg-white/10 text-white/40 cursor-wait'
+              : 'bg-white/10 text-white hover:bg-white/20 hover:border-[#d4af37]/30 border border-white/10'
+              }`}
+          >
+            <Mail size={20} className={emailLoading ? 'animate-pulse' : ''} />
+            {emailLoading ? 'Sending...' : 'Send to Email'}
+          </button>
         </div>
+
+        {/* Toast */}
+        {toast && (
+          <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl text-lg shadow-lg z-50 transition-all animate-reveal-up ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            } text-white`}>
+            {toast.message}
+          </div>
+        )}
 
         {/* Summary Cards - Hero Section */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
@@ -280,7 +358,7 @@ export default function Reports() {
                 <div className="text-sm text-white/70 mt-2">Grade {grade.grade}</div>
                 {/* Mini progress */}
                 <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] rounded-full transition-all duration-500"
                     style={{ width: `${grade.total > 0 ? (grade.checkedIn / grade.total) * 100 : 0}%` }}
                   ></div>
@@ -315,7 +393,7 @@ export default function Reports() {
                     <div className="w-16 h-16 rounded-full border-4 border-white/10 flex items-center justify-center relative">
                       <svg className="absolute inset-0 w-full h-full -rotate-90">
                         <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-                        <circle 
+                        <circle
                           cx="32" cy="32" r="28" fill="none" stroke="#d4af37" strokeWidth="4"
                           strokeDasharray={`${(grade.checkedIn / grade.total) * 176} 176`}
                           strokeLinecap="round"
@@ -329,15 +407,32 @@ export default function Reports() {
                 {/* Students Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {grade.students.map((student, index) => (
-                    <div 
-                      key={student.id} 
+                    <div
+                      key={student.id}
                       className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 hover:bg-white/5 hover:border-[#d4af37]/20 transition-all duration-200"
                     >
                       <div className="flex items-center gap-4 min-w-0">
-                        <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 text-sm font-medium">
-                          {index + 1}
-                        </span>
-                        <span className="text-white/90 truncate">{student.fullName}</span>
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full border border-white/10 overflow-hidden flex items-center justify-center bg-black/20 relative">
+                            {/* Grey circle backdrop */}
+                            <div className="absolute w-5 h-5 bg-[#333333] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+
+                            {student.avatarUrl ? (
+                              <img src={student.avatarUrl} alt={student.fullName} className="relative z-10 w-full h-full object-cover" />
+                            ) : (
+                              <div className="relative z-10 w-full h-full flex items-center justify-center text-white/30">
+                                <span className="text-xs font-bold">{getInitials(student.fullName)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-white/90 truncate block">{student.fullName}</span>
+                          <span className="text-white/30 text-[10px] flex items-center gap-1">
+                            <Clock size={10} /> {formatTime(student.checkinTime)}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2 text-[#22c55e] text-sm font-medium">
                         <Clock size={14} />

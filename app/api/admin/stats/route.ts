@@ -21,32 +21,32 @@ export async function GET(request: Request) {
     }
 
     // Get stats
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
     const totalStudents = await prisma.student.count()
-    const checkedInStudents = await prisma.student.count({
-      where: { checked: { not: null } }
+    const checkedInStudents = await prisma.attendance.count({
+      where: { eventDate: today }
     })
 
-    const gradeData = await prisma.student.groupBy({
-      by: ['grade'],
-      _count: { id: true },
-      where: { checked: { not: null } }
-    })
-
-    const allGrades = await prisma.student.groupBy({
-      by: ['grade'],
-      _count: { id: true }
-    })
-
-    const gradeStats = allGrades.map((grade: any) => ({
-      grade: grade.grade,
-      checkedIn: gradeData.find((g: any) => g.grade === grade.grade)?._count.id || 0,
-      total: grade._count.id
-    }))
+    const gradeStats = []
+    for (let grade = 7; grade <= 12; grade++) {
+      const total = await prisma.student.count({ where: { grade } })
+      const checkedIn = await prisma.student.count({
+        where: {
+          grade,
+          attendance: {
+            some: { eventDate: today }
+          }
+        }
+      })
+      gradeStats.push({ grade, checkedIn, total })
+    }
 
     return NextResponse.json({
       totalCheckedIn: checkedInStudents,
       totalStudents,
-      gradeData: gradeStats.sort((a: any, b: any) => a.grade - b.grade)
+      gradeData: gradeStats
     })
   } catch (error) {
     console.error('Admin stats error:', error)

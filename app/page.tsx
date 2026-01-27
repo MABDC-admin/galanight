@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Check } from 'lucide-react'
+import { Search, Check, User } from 'lucide-react'
 import Link from 'next/link'
 
 interface Student {
   id: number
   fullName: string
   grade: number
+  avatarUrl: string | null
   checked: string | null
 }
 
@@ -24,6 +25,7 @@ interface ReportData {
   recentCheckins: Array<{
     fullName: string
     grade: number
+    avatarUrl: string | null
     checkinTime: Date
   }>
 }
@@ -36,6 +38,7 @@ export default function Home() {
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [activeTab, setActiveTab] = useState<'reports' | 'checkins'>('reports')
   const [isClient, setIsClient] = useState(false)
+  const GALA_KEY = 'gala2026'
 
   // Set isClient to true on mount to ensure client-side rendering
   useEffect(() => {
@@ -50,11 +53,21 @@ export default function Home() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/students/search?q=${encodeURIComponent(query)}`)
+      const response = await fetch(`/api/students/search?q=${encodeURIComponent(query)}&key=${GALA_KEY}`)
       const data = await response.json()
-      setStudents(data)
+
+      if (response.ok && Array.isArray(data)) {
+        setStudents(data)
+      } else {
+        console.error('API Error or invalid data format:', data)
+        setStudents([])
+        if (data.error) showToast(data.error)
+        else if (response.status === 403) showToast('Access denied. Invalid key.')
+      }
     } catch (error) {
       console.error('Search error:', error)
+      setStudents([])
+      showToast('Search failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -62,7 +75,7 @@ export default function Home() {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('/api/reports?key=gala2026')
+      const response = await fetch(`/api/reports?key=${GALA_KEY}`)
       const data = await response.json()
       setReportData(data)
     } catch (error) {
@@ -88,14 +101,14 @@ export default function Home() {
     if (!confirm(`Check in ${name} for MABDC Gala Night?`)) return
 
     try {
-      const response = await fetch('/api/attendance/checkin', {
+      const response = await fetch(`/api/attendance/checkin?key=${GALA_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       })
 
       const data = await response.json()
-      
+
       if (response.ok) {
         showToast(data.message || 'Checked in successfully')
         searchStudents(searchQuery)
@@ -118,18 +131,27 @@ export default function Home() {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2)
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden" style={{ background: '#000' }}>
       {/* Background Image */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110"
         style={{ backgroundImage: 'url(/bg.png)' }}
       />
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
-      
+
       {/* Shimmer Overlay */}
       <div className="shimmer-overlay" />
-      
+
       {/* Sparkle Effects - Rendered only on client */}
       {isClient && (
         <div className="sparkle-container">
@@ -147,32 +169,46 @@ export default function Home() {
           ))}
         </div>
       )}
-      
+
       {/* Glow Orbs */}
       <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />
       <div className="glow-orb" style={{ width: '200px', height: '200px', top: '60%', right: '10%', animationDelay: '2s' }} />
       <div className="glow-orb" style={{ width: '150px', height: '150px', bottom: '20%', left: '30%', animationDelay: '4s' }} />
 
-      {/* Reports Dashboard Button - Top Right */}
-      <Link 
-        href="/reports?key=gala2026"
-        className="fixed top-6 right-6 z-50 group overflow-hidden rounded-xl transition-all duration-300 hover:scale-105"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        <div className="relative backdrop-blur-xl bg-black/60 border border-[#d4af37]/50 rounded-xl px-5 py-3 group-hover:bg-transparent transition-all">
-          <span className="text-sm font-bold tracking-wider text-[#d4af37] group-hover:text-black transition-colors">
-            REPORTS DASHBOARD
-          </span>
-        </div>
-      </Link>
+      {/* Navigation Buttons - Top Right */}
+      <div className="fixed top-6 right-6 z-50 flex gap-4">
+        <Link
+          href="/admin/login"
+          className="group overflow-hidden rounded-xl transition-all duration-300 hover:scale-105"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-black/60 border border-white/20 rounded-xl px-5 py-3 group-hover:bg-white/5 transition-all">
+            <span className="text-sm font-bold tracking-wider text-white/70 group-hover:text-white transition-colors">
+              ADMIN
+            </span>
+          </div>
+        </Link>
+
+        <Link
+          href="/reports?key=gala2026"
+          className="group overflow-hidden rounded-xl transition-all duration-300 hover:scale-105"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="relative backdrop-blur-xl bg-black/60 border border-[#d4af37]/50 rounded-xl px-5 py-3 group-hover:bg-transparent transition-all">
+            <span className="text-sm font-bold tracking-wider text-[#d4af37] group-hover:text-black transition-colors">
+              REPORTS DASHBOARD
+            </span>
+          </div>
+        </Link>
+      </div>
 
       {/* Header */}
       <header className="relative z-10 pt-8 pb-6">
-        <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
+        <h1 className="text-5xl md:text-6xl text-center text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37] tracking-wider font-light animate-reveal-up animate-title-shimmer" style={{ fontFamily: 'Georgia, serif', filter: 'drop-shadow(0 0 30px rgba(212,175,55,0.4))' }}>
           MABDC Gala Night
         </h1>
-        <p className="text-center text-[#a0a0a0] text-lg mt-2 tracking-widest uppercase">Student Check-In System</p>
-        <div className="w-64 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mx-auto mt-4"></div>
+        <p className="text-center text-[#a0a0a0] text-lg mt-2 tracking-widest uppercase animate-reveal-up delay-200 opacity-0 style={{ animationFillMode: 'forwards' }}">Student Check-In System</p>
+        <div className="w-64 h-[1px] bg-gradient-to-r from-transparent via-[#d4af37] to-transparent mx-auto mt-4 animate-reveal-up delay-500 opacity-0" style={{ animationFillMode: 'forwards' }}></div>
       </header>
 
       {/* Main Content */}
@@ -221,37 +257,57 @@ export default function Home() {
               {students.map((student) => (
                 <div
                   key={student.id}
-                  className={`group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.01] ${
-                    student.checked 
-                      ? 'hover:shadow-[0_8px_32px_rgba(34,197,94,0.15)]' 
-                      : 'hover:shadow-[0_8px_32px_rgba(212,175,55,0.15)]'
-                  }`}
+                  className={`group relative overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.01] ${student.checked
+                    ? 'hover:shadow-[0_8px_32px_rgba(34,197,94,0.15)]'
+                    : 'hover:shadow-[0_8px_32px_rgba(212,175,55,0.15)]'
+                    }`}
                 >
                   {/* Gradient border effect */}
-                  <div className={`absolute inset-0 rounded-2xl ${
-                    student.checked 
-                      ? 'bg-gradient-to-r from-[#22c55e]/20 to-[#16a34a]/20' 
-                      : 'bg-gradient-to-r from-[#d4af37]/20 to-[#f4e4bc]/20'
-                  }`}></div>
-                  
-                  <div className={`relative backdrop-blur-xl rounded-2xl p-5 border ${
-                    student.checked 
-                      ? 'bg-[#0a1a0f]/80 border-[#22c55e]/30' 
-                      : 'bg-black/40 border-[#d4af37]/20'
-                  }`}>
+                  <div className={`absolute inset-0 rounded-2xl ${student.checked
+                    ? 'bg-gradient-to-r from-[#22c55e]/20 to-[#16a34a]/20'
+                    : 'bg-gradient-to-r from-[#d4af37]/20 to-[#f4e4bc]/20'
+                    }`}></div>
+
+                  <div className={`relative backdrop-blur-xl rounded-2xl p-5 border ${student.checked
+                    ? 'bg-[#0a1a0f]/80 border-[#22c55e]/30'
+                    : 'bg-black/40 border-[#d4af37]/20'
+                    }`}>
                     <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xl text-white font-medium truncate">{student.fullName}</div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[#d4af37] text-sm font-medium">Grade {student.grade}</span>
-                          <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                          {student.checked ? (
-                            <span className="text-[#22c55e] text-sm flex items-center gap-1.5">
-                              <Check size={14} /> Checked In
-                            </span>
-                          ) : (
-                            <span className="text-white/40 text-sm">Pending</span>
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div className={`w-14 h-14 rounded-full border-2 overflow-hidden flex items-center justify-center ${student.checked ? 'border-[#22c55e]/50' : 'border-[#d4af37]/50'} bg-black/40 relative`}>
+                            {/* Grey circle backdrop */}
+                            <div className="absolute w-8 h-8 bg-[#333333] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+
+                            {student.avatarUrl ? (
+                              <img src={student.avatarUrl} alt={student.fullName} className="relative z-10 w-full h-full object-cover" />
+                            ) : (
+                              <div className="relative z-10 w-full h-full flex items-center justify-center text-white/40">
+                                <span className="text-xl font-bold">{getInitials(student.fullName)}</span>
+                              </div>
+                            )}
+                          </div>
+                          {student.checked && (
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#22c55e] rounded-full border-2 border-[#000] flex items-center justify-center">
+                              <Check size={12} className="text-white" />
+                            </div>
                           )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-xl text-white font-medium truncate">{student.fullName}</div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[#d4af37] text-sm font-medium">Grade {student.grade}</span>
+                            <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                            {student.checked ? (
+                              <span className="text-[#22c55e] text-sm flex items-center gap-1.5">
+                                <Check size={14} /> Checked In
+                              </span>
+                            ) : (
+                              <span className="text-white/40 text-sm">Pending</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -283,10 +339,10 @@ export default function Home() {
                   <span className="text-2xl text-white/50">{reportData?.summary.totalStudents || 0}</span>
                 </div>
                 <div className="text-white/50 text-sm mt-2">Students Checked In</div>
-                
+
                 {/* Progress bar */}
                 <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] rounded-full transition-all duration-500"
                     style={{ width: `${reportData ? (reportData.summary.total / reportData.summary.totalStudents) * 100 : 0}%` }}
                   ></div>
@@ -297,23 +353,21 @@ export default function Home() {
             {/* Slider Widget - Live Reports & Recent Check-ins */}
             <div className="relative overflow-hidden rounded-2xl backdrop-blur-xl bg-white/5 border border-white/10">
               <div className="tabs flex border-b border-white/10">
-                <button 
+                <button
                   onClick={() => setActiveTab('reports')}
-                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
-                    activeTab === 'reports' 
-                      ? 'text-[#d4af37] border-b-2 border-[#d4af37]' 
-                      : 'text-white/70 border-b-2 border-transparent hover:text-[#d4af37]'
-                  }`}
+                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${activeTab === 'reports'
+                    ? 'text-[#d4af37] border-b-2 border-[#d4af37]'
+                    : 'text-white/70 border-b-2 border-transparent hover:text-[#d4af37]'
+                    }`}
                 >
                   Live Reports
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('checkins')}
-                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
-                    activeTab === 'checkins' 
-                      ? 'text-[#22c55e] border-b-2 border-[#22c55e]' 
-                      : 'text-white/70 border-b-2 border-transparent hover:text-[#22c55e]'
-                  }`}
+                  className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${activeTab === 'checkins'
+                    ? 'text-[#22c55e] border-b-2 border-[#22c55e]'
+                    : 'text-white/70 border-b-2 border-transparent hover:text-[#22c55e]'
+                    }`}
                 >
                   Recent Check-ins
                 </button>
@@ -339,12 +393,27 @@ export default function Home() {
                 {activeTab === 'checkins' && (
                   <div className="space-y-3">
                     {reportData?.recentCheckins.slice(0, 5).map((checkin, index) => (
-                      <div key={index} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white/90 text-sm truncate">{checkin.fullName}</div>
-                          <div className="text-white/40 text-xs">Grade {checkin.grade}</div>
+                      <div key={index} className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/5 px-2 rounded-lg transition-colors">
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full border border-[#22c55e]/30 overflow-hidden flex items-center justify-center bg-black/20 relative">
+                            {/* Grey circle backdrop */}
+                            <div className="absolute w-5 h-5 bg-[#333333] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+
+                            {checkin.avatarUrl ? (
+                              <img src={checkin.avatarUrl} alt={checkin.fullName} className="relative z-10 w-full h-full object-cover" />
+                            ) : (
+                              <div className="relative z-10 w-full h-full flex items-center justify-center text-white/30">
+                                <span className="text-xs font-bold">{getInitials(checkin.fullName)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-[#22c55e] text-sm font-medium">{formatTime(checkin.checkinTime)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white/90 text-sm font-medium truncate">{checkin.fullName}</div>
+                          <div className="text-white/40 text-[10px] tracking-wider uppercase mt-0.5">Grade {checkin.grade}</div>
+                        </div>
+                        <span className="text-[#22c55e] text-xs font-semibold">{formatTime(checkin.checkinTime)}</span>
                       </div>
                     ))}
                     {(!reportData?.recentCheckins || reportData.recentCheckins.length === 0) && (

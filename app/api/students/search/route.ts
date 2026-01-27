@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       id: student.id,
       fullName: student.fullName,
       grade: student.grade,
+      avatarUrl: student.avatarUrl,
       checked: student.attendance.length > 0 ? student.attendance[0].checkinTime : null
     }))
 

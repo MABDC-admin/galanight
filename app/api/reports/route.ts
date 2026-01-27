@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         students: students.map(s => ({
           id: s.id,
           fullName: s.fullName,
+          avatarUrl: s.avatarUrl,
           checkinTime: s.attendance[0]?.checkinTime
         }))
       })
@@ -79,15 +80,16 @@ export async function GET(request: NextRequest) {
       summary: {
         total: totalCheckedIn,
         totalStudents,
-        gradeTotals: gradeTotals.map(g => ({ 
-          grade: g.grade, 
-          count: Number(g.count) 
+        gradeTotals: gradeTotals.map(g => ({
+          grade: g.grade,
+          count: Number(g.count)
         }))
       },
       gradeData,
       recentCheckins: recentCheckins.map(r => ({
         fullName: r.student.fullName,
         grade: r.student.grade,
+        avatarUrl: r.student.avatarUrl,
         checkinTime: r.checkinTime
       }))
     })

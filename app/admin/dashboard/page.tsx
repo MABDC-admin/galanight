@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, RotateCcw, Users, Calendar, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Users, Calendar, AlertTriangle, Search, Upload, Check } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AdminDashboard() {
@@ -16,6 +16,10 @@ export default function AdminDashboard() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [students, setStudents] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
+  const [uploadingId, setUploadingId] = useState<number | null>(null)
   const router = useRouter()
 
   // Set isClient to true on mount to ensure client-side rendering
@@ -37,7 +41,7 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/stats', {
         headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setStats(data)
@@ -46,6 +50,67 @@ export default function AdminDashboard() {
       console.error('Failed to fetch stats:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const searchStudents = async (query: string) => {
+    if (!query) {
+      setStudents([])
+      return
+    }
+    setSearching(true)
+    try {
+      const response = await fetch(`/api/students/search?q=${query}&key=gala2026`)
+      if (response.ok) {
+        const data = await response.json()
+        setStudents(data)
+      }
+    } catch (error) {
+      console.error('Search failed:', error)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchStudents(searchQuery)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleFileUpload = async (studentId: number, file: File) => {
+    setUploadingId(studentId)
+    const formData = new FormData()
+
+    try {
+      showToast('Removing background...', 'success')
+      const { removeBackground } = await import('@imgly/background-removal')
+      const blob = await removeBackground(file)
+      const processedFile = new File([blob], 'avatar.png', { type: 'image/png' })
+
+      formData.append('file', processedFile)
+      formData.append('studentId', studentId.toString())
+
+      const response = await fetch('/api/admin/students/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: formData
+      })
+
+      if (response.ok) {
+        showToast('Photo uploaded successfully!', 'success')
+        searchStudents(searchQuery)
+      } else {
+        const data = await response.json()
+        showToast(data.error || 'Upload failed', 'error')
+      }
+    } catch (error) {
+      showToast('Upload failed', 'error')
+    } finally {
+      setUploadingId(null)
     }
   }
 
@@ -59,7 +124,7 @@ export default function AdminDashboard() {
     try {
       const response = await fetch('/api/admin/reset', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('admin_token')}`
         }
@@ -86,6 +151,15 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2)
+  }
+
   const logout = () => {
     localStorage.removeItem('admin_token')
     router.push('/')
@@ -109,7 +183,7 @@ export default function AdminDashboard() {
       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md scale-110" style={{ backgroundImage: 'url(/bg.png)' }} />
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
       <div className="shimmer-overlay" />
-      
+
       {/* Sparkle Effects - Rendered only on client */}
       {isClient && (
         <div className="sparkle-container">
@@ -127,7 +201,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
-      
+
       {/* Glow Orbs */}
       <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />
       <div className="glow-orb" style={{ width: '200px', height: '200px', top: '60%', right: '10%', animationDelay: '2s' }} />
@@ -193,10 +267,10 @@ export default function AdminDashboard() {
             <div className="flex-1">
               <h2 className="text-2xl text-red-400 font-semibold mb-2">Reset Attendance Records</h2>
               <p className="text-white/70 mb-6">
-                This will clear all check-in records and reset attendance status for all students. 
+                This will clear all check-in records and reset attendance status for all students.
                 This action cannot be undone.
               </p>
-              
+
               {!confirmReset ? (
                 <button
                   onClick={handleReset}
@@ -226,6 +300,82 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Student Management Section */}
+        <div className="backdrop-blur-xl bg-black/40 border border-[#d4af37]/30 rounded-2xl p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl text-[#d4af37] font-semibold">Student Directory</h2>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+              <input
+                type="text"
+                placeholder="Search to edit..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-white focus:outline-none focus:border-[#d4af37]/50"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {searching ? (
+              <div className="text-center py-8 text-white/30">Searching...</div>
+            ) : students.length > 0 ? (
+              students.map((student) => (
+                <div key={student.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full border border-white/10 overflow-hidden bg-black/40 flex items-center justify-center relative">
+                      {/* Grey circle backdrop */}
+                      <div className="absolute w-6 h-6 bg-[#333333] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+
+                      {student.avatarUrl ? (
+                        <img src={student.avatarUrl} alt={student.fullName} className="relative z-10 w-full h-full object-cover" />
+                      ) : (
+                        <div className="relative z-10 w-full h-full flex items-center justify-center text-white/30">
+                          <span className="text-sm font-bold">{getInitials(student.fullName)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">{student.fullName}</div>
+                      <div className="text-white/40 text-sm">Grade {student.grade}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer group">
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleFileUpload(student.id, file)
+                        }}
+                        disabled={uploadingId === student.id}
+                      />
+                      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${uploadingId === student.id
+                        ? 'bg-white/10 text-white/40 cursor-wait'
+                        : 'bg-[#d4af37]/10 text-[#d4af37] hover:bg-[#d4af37]/20 border border-[#d4af37]/20'
+                        }`}>
+                        {uploadingId === student.id ? 'Uploading...' : (
+                          <>
+                            <Upload size={16} />
+                            Upload Photo
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              ))
+            ) : searchQuery ? (
+              <div className="text-center py-8 text-white/30">No students found</div>
+            ) : (
+              <div className="text-center py-8 text-white/30 italic">Search for a student to upload their photo</div>
+            )}
+          </div>
+        </div>
+
         {/* Grade Breakdown */}
         <div className="backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-6">
           <h2 className="text-2xl text-[#d4af37] font-semibold mb-6">Grade Breakdown</h2>
@@ -242,7 +392,7 @@ export default function AdminDashboard() {
 
         {/* Navigation */}
         <div className="mt-8 flex gap-4">
-          <Link 
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 backdrop-blur-xl bg-white/5 text-white/80 rounded-2xl border border-white/10 hover:bg-white/10 hover:border-[#d4af37]/30 hover:text-[#d4af37] transition-all"
           >
@@ -254,9 +404,8 @@ export default function AdminDashboard() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl text-lg shadow-lg z-50 ${
-          toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        } text-white`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl text-lg shadow-lg z-50 ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          } text-white`}>
           {toast.message}
         </div>
       )}

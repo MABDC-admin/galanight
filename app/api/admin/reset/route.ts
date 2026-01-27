@@ -20,10 +20,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // Reset all attendance records
-    await prisma.student.updateMany({
-      where: { checked: { not: null } },
-      data: { checked: null }
+    // Reset all attendance records for today
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    await prisma.attendance.deleteMany({
+      where: { eventDate: today }
     })
 
     return NextResponse.json({ message: 'All attendance records have been reset' })
