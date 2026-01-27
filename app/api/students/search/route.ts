@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    const results = students.map(student => ({
+    const results = students.map((student: any) => ({
       id: student.id,
       fullName: student.fullName,
       grade: student.grade,
