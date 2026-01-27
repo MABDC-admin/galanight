@@ -54,9 +54,16 @@ export default function Reports() {
       const key = new URLSearchParams(window.location.search).get('key')
       const response = await fetch(`/api/reports${key ? `?key=${key}` : ''}`)
       const result = await response.json()
-      setData(result)
+
+      if (response.ok && !result.error) {
+        setData(result)
+      } else {
+        console.error('Report error:', result.error || 'Unknown error')
+        setData(null)
+      }
     } catch (error) {
       console.error('Failed to fetch reports:', error)
+      setData(null)
     } finally {
       setLoading(false)
     }
