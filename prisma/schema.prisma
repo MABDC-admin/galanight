@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Student {
+  id         Int          @id @default(autoincrement())
+  fullName   String       @map("full_name") @db.VarChar(200)
+  grade      Int
+  createdAt  DateTime     @default(now()) @map("created_at")
+  attendance Attendance[]
+
+  @@map("students")
+}
+
+model Attendance {
+  id          Int      @id @default(autoincrement())
+  eventDate   DateTime @map("event_date") @db.Date
+  studentId   Int      @map("student_id")
+  checkinTime DateTime @default(now()) @map("checkin_time")
+  student     Student  @relation(fields: [studentId], references: [id])
+
+  @@unique([eventDate, studentId], name: "uniq_event_student")
+  @@map("attendance")
+}

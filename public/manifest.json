@@ -1,0 +1,10 @@
+{
+  "name": "JS Prom Night",
+  "short_name": "Prom Check-In",
+  "description": "Student check-in application for JS Prom Night",
+  "start_url": "/?key=your-secret-key",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#d4af37",
+  "orientation": "portrait"
+}
