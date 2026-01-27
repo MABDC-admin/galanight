@@ -15,7 +15,13 @@ export default function AdminDashboard() {
   const [resetLoading, setResetLoading] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
+
+  // Set isClient to true on mount to ensure client-side rendering
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
@@ -105,20 +111,22 @@ export default function AdminDashboard() {
       <div className="shimmer-overlay" />
       
       {/* Sparkle Effects - Rendered only on client */}
-      <div className="sparkle-container">
-        {typeof window !== 'undefined' && [...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="sparkle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
-            }}
-          />
-        ))}
-      </div>
+      {isClient && (
+        <div className="sparkle-container">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="sparkle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${2 + Math.random() * 3}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       
       {/* Glow Orbs */}
       <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />

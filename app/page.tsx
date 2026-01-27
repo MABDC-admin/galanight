@@ -35,6 +35,12 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null)
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [activeTab, setActiveTab] = useState<'reports' | 'checkins'>('reports')
+  const [isClient, setIsClient] = useState(false)
+
+  // Set isClient to true on mount to ensure client-side rendering
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const searchStudents = useCallback(async (query: string) => {
     if (query.length < 1) {
@@ -125,20 +131,22 @@ export default function Home() {
       <div className="shimmer-overlay" />
       
       {/* Sparkle Effects - Rendered only on client */}
-      <div className="sparkle-container">
-        {typeof window !== 'undefined' && [...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="sparkle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
-            }}
-          />
-        ))}
-      </div>
+      {isClient && (
+        <div className="sparkle-container">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="sparkle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 5}s`,
+                animationDuration: `${2 + Math.random() * 3}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       
       {/* Glow Orbs */}
       <div className="glow-orb" style={{ width: '300px', height: '300px', top: '10%', left: '5%', animationDelay: '0s' }} />
