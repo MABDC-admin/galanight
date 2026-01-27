@@ -46,9 +46,9 @@ export default function AdminLogin() {
       {/* Shimmer Overlay */}
       <div className="shimmer-overlay" />
       
-      {/* Sparkle Effects */}
+      {/* Sparkle Effects - Rendered only on client */}
       <div className="sparkle-container">
-        {[...Array(20)].map((_, i) => (
+        {typeof window !== 'undefined' && [...Array(20)].map((_, i) => (
           <div
             key={i}
             className="sparkle"

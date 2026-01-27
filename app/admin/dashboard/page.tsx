@@ -104,9 +104,9 @@ export default function AdminDashboard() {
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/70" />
       <div className="shimmer-overlay" />
       
-      {/* Sparkle Effects */}
+      {/* Sparkle Effects - Rendered only on client */}
       <div className="sparkle-container">
-        {[...Array(20)].map((_, i) => (
+        {typeof window !== 'undefined' && [...Array(20)].map((_, i) => (
           <div
             key={i}
             className="sparkle"
