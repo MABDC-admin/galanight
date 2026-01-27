@@ -31,18 +31,10 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Build Next.js
+      - name: Prepare Dummy Web Assets
         run: |
-          # The app currently builds for SSR (Railway)
-          # Capacitor needs an 'out' folder even if using server.url
-          npm run build || true
           mkdir -p out
-          echo "<html><body>Live App Loading...</body></html>" > out/index.html
-        env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-
-      - name: Install Capacitor
-        run: npm install @capacitor/android
+          echo "<html><head><meta http-equiv=\"refresh\" content=\"0;url=https://galanight-production.up.railway.app\"></head><body>Redirecting to Live App...</body></html>" > out/index.html
 
       - name: Capacitor Sync
         run: |
