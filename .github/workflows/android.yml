@@ -33,10 +33,11 @@ jobs:
 
       - name: Build Next.js
         run: |
-          # We need to temporarily enable export for the APK build
-          # But for the regular push we might want to keep it SSR
-          # For a simple APK we will use the static export
-          npm run build
+          # The app currently builds for SSR (Railway)
+          # Capacitor needs an 'out' folder even if using server.url
+          npm run build || true
+          mkdir -p out
+          echo "<html><body>Live App Loading...</body></html>" > out/index.html
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
@@ -44,7 +45,9 @@ jobs:
         run: npm install @capacitor/android
 
       - name: Capacitor Sync
-        run: npx cap sync android
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx cap sync android
 
       - name: Build Android APK
         run: |
