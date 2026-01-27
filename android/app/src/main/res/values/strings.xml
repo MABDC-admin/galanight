@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gala Night</string>
+    <string name="title_activity_main">Gala Night</string>
+    <string name="package_name">com.mabdc.galanight</string>
+    <string name="custom_url_scheme">com.mabdc.galanight</string>
+</resources>
