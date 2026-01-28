@@ -128,46 +128,46 @@ export default function Reports() {
       .join('   |   ')
     doc.text(gradeSummary, 14, summaryY)
 
-    let currentY = 60
+    let currentY = 60;
 
-      // For each grade with checked-in students
-      (data?.gradeData ?? []).filter(g => g.checkedIn > 0).forEach((grade) => {
-        // Check if we need a new page
-        if (currentY > 250) {
-          doc.addPage()
-          currentY = 20
-        }
+    // For each grade with checked-in students
+    (data?.gradeData ?? []).filter((g: any) => g.checkedIn > 0).forEach((grade: any) => {
+      // Check if we need a new page
+      if (currentY > 250) {
+        doc.addPage()
+        currentY = 20
+      }
 
-        // Grade header
-        doc.setFontSize(12)
-        doc.setTextColor(40, 40, 40)
-        doc.text(`Grade ${grade.grade} (${grade.checkedIn} checked in)`, 14, currentY)
-        currentY += 6
+      // Grade header
+      doc.setFontSize(12)
+      doc.setTextColor(40, 40, 40)
+      doc.text(`Grade ${grade.grade} (${grade.checkedIn} checked in)`, 14, currentY)
+      currentY += 6
 
-        // Table for this grade
-        const tableData = grade.students.map((student, index) => [
-          (index + 1).toString(),
-          student.fullName,
-          formatFullDateTime(student.checkinTime)
-        ])
+      // Table for this grade
+      const tableData = (grade?.students ?? []).map((student: any, index: number) => [
+        (index + 1).toString(),
+        student.fullName,
+        formatFullDateTime(student.checkinTime)
+      ])
 
-        autoTable(doc, {
-          startY: currentY,
-          head: [['#', 'Student Name', 'Check-in Time']],
-          body: tableData,
-          theme: 'striped',
-          headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
-          styles: { fontSize: 9 },
-          columnStyles: {
-            0: { cellWidth: 10 },
-            1: { cellWidth: 90 },
-            2: { cellWidth: 60 }
-          },
-          margin: { left: 14, right: 14 }
-        })
-
-        currentY = (doc as any).lastAutoTable.finalY + 10
+      autoTable(doc, {
+        startY: currentY,
+        head: [['#', 'Student Name', 'Check-in Time']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+        styles: { fontSize: 9 },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 90 },
+          2: { cellWidth: 60 }
+        },
+        margin: { left: 14, right: 14 }
       })
+
+      currentY = (doc as any).lastAutoTable.finalY + 10
+    })
 
     // Footer with generation time
     const pageCount = (doc as any).internal.getNumberOfPages()
