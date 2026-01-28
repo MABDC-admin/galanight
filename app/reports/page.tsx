@@ -348,7 +348,7 @@ export default function Reports() {
             <div className="absolute inset-0 bg-gradient-to-br from-[#d4af37]/20 via-transparent to-[#d4af37]/10"></div>
             <div className="relative backdrop-blur-xl bg-black/40 border-2 border-[#d4af37]/50 rounded-2xl p-6 text-center h-full flex flex-col justify-center">
               <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37]" style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.3))' }}>
-                {data.summary.total}
+                {data?.summary?.total ?? 0}
               </div>
               <div className="text-sm text-white/50 mt-1">of {data.summary.totalStudents}</div>
               <div className="text-xs text-[#d4af37] uppercase tracking-widest mt-2">Total</div>

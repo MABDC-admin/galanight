@@ -13,15 +13,6 @@ export async function GET(request: NextRequest) {
 
     const totalStudents = await prisma.student.count()
 
-    // Get per-grade totals
-    const gradeTotals = await prisma.$queryRaw<Array<{ grade: number; count: bigint }>>`
-      SELECT s.grade, COUNT(a.id)::int as count
-      FROM students s
-      LEFT JOIN attendance a ON a.student_id = s.id AND a.event_date = ${today}::date
-      WHERE a.id IS NOT NULL
-      GROUP BY s.grade
-      ORDER BY s.grade
-    `
 
     // Get checked-in students by grade
     const gradeData = []
@@ -80,10 +71,7 @@ export async function GET(request: NextRequest) {
       summary: {
         total: totalCheckedIn,
         totalStudents,
-        gradeTotals: gradeTotals.map((g: any) => ({
-          grade: g.grade,
-          count: Number(g.count)
-        }))
+        gradeTotals: []
       },
       gradeData,
       recentCheckins: recentCheckins.map((r: any) => ({
