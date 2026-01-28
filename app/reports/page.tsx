@@ -118,56 +118,56 @@ export default function Reports() {
     // Summary
     doc.setFontSize(14)
     doc.setTextColor(40, 40, 40)
-    doc.text(`Total Checked In: ${data.summary.total} / ${data.summary.totalStudents}`, 14, 42)
+    doc.text(`Total Checked In: ${data?.summary?.total ?? 0} / ${data?.summary?.totalStudents ?? 0}`, 14, 42)
 
     // Grade summary line
     let summaryY = 50
     doc.setFontSize(10)
-    const gradeSummary = data.gradeData
+    const gradeSummary = (data?.gradeData ?? [])
       .map(g => `G${g.grade}: ${g.checkedIn}/${g.total}`)
       .join('   |   ')
     doc.text(gradeSummary, 14, summaryY)
 
     let currentY = 60
 
-    // For each grade with checked-in students
-    data.gradeData.filter(g => g.checkedIn > 0).forEach((grade) => {
-      // Check if we need a new page
-      if (currentY > 250) {
-        doc.addPage()
-        currentY = 20
-      }
+      // For each grade with checked-in students
+      (data?.gradeData ?? []).filter(g => g.checkedIn > 0).forEach((grade) => {
+        // Check if we need a new page
+        if (currentY > 250) {
+          doc.addPage()
+          currentY = 20
+        }
 
-      // Grade header
-      doc.setFontSize(12)
-      doc.setTextColor(40, 40, 40)
-      doc.text(`Grade ${grade.grade} (${grade.checkedIn} checked in)`, 14, currentY)
-      currentY += 6
+        // Grade header
+        doc.setFontSize(12)
+        doc.setTextColor(40, 40, 40)
+        doc.text(`Grade ${grade.grade} (${grade.checkedIn} checked in)`, 14, currentY)
+        currentY += 6
 
-      // Table for this grade
-      const tableData = grade.students.map((student, index) => [
-        (index + 1).toString(),
-        student.fullName,
-        formatFullDateTime(student.checkinTime)
-      ])
+        // Table for this grade
+        const tableData = grade.students.map((student, index) => [
+          (index + 1).toString(),
+          student.fullName,
+          formatFullDateTime(student.checkinTime)
+        ])
 
-      autoTable(doc, {
-        startY: currentY,
-        head: [['#', 'Student Name', 'Check-in Time']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
-        styles: { fontSize: 9 },
-        columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 60 }
-        },
-        margin: { left: 14, right: 14 }
+        autoTable(doc, {
+          startY: currentY,
+          head: [['#', 'Student Name', 'Check-in Time']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [212, 175, 55], textColor: [0, 0, 0] },
+          styles: { fontSize: 9 },
+          columnStyles: {
+            0: { cellWidth: 10 },
+            1: { cellWidth: 90 },
+            2: { cellWidth: 60 }
+          },
+          margin: { left: 14, right: 14 }
+        })
+
+        currentY = (doc as any).lastAutoTable.finalY + 10
       })
-
-      currentY = (doc as any).lastAutoTable.finalY + 10
-    })
 
     // Footer with generation time
     const pageCount = (doc as any).internal.getNumberOfPages()
@@ -350,24 +350,24 @@ export default function Reports() {
               <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37]" style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.3))' }}>
                 {data?.summary?.total ?? 0}
               </div>
-              <div className="text-sm text-white/50 mt-1">of {data.summary.totalStudents}</div>
+              <div className="text-sm text-white/50 mt-1">of {data?.summary?.totalStudents ?? 0}</div>
               <div className="text-xs text-[#d4af37] uppercase tracking-widest mt-2">Total</div>
             </div>
           </div>
 
           {/* Grade Totals */}
-          {data.gradeData.map((grade) => (
+          {(data?.gradeData ?? []).map((grade) => (
             <div key={grade.grade} className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/20 to-[#f4e4bc]/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition-all duration-300"></div>
               <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 group-hover:border-[#d4af37]/30 rounded-2xl p-4 text-center transition-all duration-300">
-                <div className="text-3xl font-bold text-[#d4af37]">{grade.checkedIn}</div>
-                <div className="text-xs text-white/40 mt-1">of {grade.total}</div>
-                <div className="text-sm text-white/70 mt-2">Grade {grade.grade}</div>
+                <div className="text-3xl font-bold text-[#d4af37]">{grade?.checkedIn ?? 0}</div>
+                <div className="text-xs text-white/40 mt-1">of {grade?.total ?? 0}</div>
+                <div className="text-sm text-white/70 mt-2">Grade {grade?.grade}</div>
                 {/* Mini progress */}
                 <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] rounded-full transition-all duration-500"
-                    style={{ width: `${grade.total > 0 ? (grade.checkedIn / grade.total) * 100 : 0}%` }}
+                    style={{ width: `${(grade?.total ?? 0) > 0 ? ((grade?.checkedIn ?? 0) / (grade?.total ?? 1)) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function Reports() {
 
         {/* Grade Sections with Students */}
         <div className="space-y-6">
-          {data.gradeData.filter(g => g.checkedIn > 0).map((grade) => (
+          {(data?.gradeData ?? []).filter(g => g.checkedIn > 0).map((grade) => (
             <div key={grade.grade} className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 blur-sm transition-all duration-300"></div>
               <div className="relative backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
@@ -385,35 +385,35 @@ export default function Reports() {
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4af37] to-[#c5a028] flex items-center justify-center text-black text-xl font-bold">
-                      {grade.grade}
+                      {grade?.grade}
                     </div>
                     <div>
-                      <h3 className="text-2xl text-white font-medium">Grade {grade.grade}</h3>
+                      <h3 className="text-2xl text-white font-medium">Grade {grade?.grade}</h3>
                       <p className="text-white/40 text-sm">Students checked in</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-[#d4af37]">{grade.checkedIn}</div>
-                      <div className="text-white/40 text-sm">of {grade.total}</div>
+                      <div className="text-2xl font-bold text-[#d4af37]">{grade?.checkedIn ?? 0}</div>
+                      <div className="text-white/40 text-sm">of {grade?.total ?? 0}</div>
                     </div>
                     <div className="w-16 h-16 rounded-full border-4 border-white/10 flex items-center justify-center relative">
                       <svg className="absolute inset-0 w-full h-full -rotate-90">
                         <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
                         <circle
                           cx="32" cy="32" r="28" fill="none" stroke="#d4af37" strokeWidth="4"
-                          strokeDasharray={`${(grade.checkedIn / grade.total) * 176} 176`}
+                          strokeDasharray={`${(grade?.total ?? 0) > 0 ? ((grade?.checkedIn ?? 0) / (grade?.total ?? 1)) * 176 : 0} 176`}
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-sm font-bold text-[#d4af37]">{Math.round((grade.checkedIn / grade.total) * 100)}%</span>
+                      <span className="text-sm font-bold text-[#d4af37]">{Math.round((grade?.total ?? 0) > 0 ? ((grade?.checkedIn ?? 0) / (grade?.total ?? 1)) * 100 : 0)}%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Students Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {grade.students.map((student, index) => (
+                  {(grade?.students ?? []).map((student, index) => (
                     <div
                       key={student.id}
                       className="flex items-center justify-between p-4 bg-black/20 rounded-xl border border-white/5 hover:bg-white/5 hover:border-[#d4af37]/20 transition-all duration-200"
@@ -425,25 +425,25 @@ export default function Reports() {
                             {/* Grey circle backdrop */}
                             <div className="absolute w-5 h-5 bg-[#333333] rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
 
-                            {student.avatarUrl ? (
+                            {student?.avatarUrl ? (
                               <img src={student.avatarUrl} alt={student.fullName} className="relative z-10 w-full h-full object-cover" />
                             ) : (
                               <div className="relative z-10 w-full h-full flex items-center justify-center text-white/30">
-                                <span className="text-xs font-bold">{getInitials(student.fullName)}</span>
+                                <span className="text-xs font-bold">{getInitials(student?.fullName ?? '??')}</span>
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <span className="text-white/90 truncate block">{student.fullName}</span>
+                          <span className="text-white/90 truncate block">{student?.fullName ?? 'Unknown'}</span>
                           <span className="text-white/30 text-[10px] flex items-center gap-1">
-                            <Clock size={10} /> {formatTime(student.checkinTime)}
+                            <Clock size={10} /> {student?.checkinTime ? formatTime(student.checkinTime) : '--:--'}
                           </span>
                         </div>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2 text-[#22c55e] text-sm font-medium">
                         <Clock size={14} />
-                        {formatTime(student.checkinTime)}
+                        {student?.checkinTime ? formatTime(student.checkinTime) : '--:--'}
                       </div>
                     </div>
                   ))}
@@ -452,7 +452,7 @@ export default function Reports() {
             </div>
           ))}
 
-          {data.summary.total === 0 && (
+          {(data?.summary?.total ?? 0) === 0 && (
             <div className="backdrop-blur-xl bg-white/5 rounded-3xl p-16 text-center border border-white/10">
               <div className="text-white/30 text-2xl">No students have checked in yet</div>
             </div>

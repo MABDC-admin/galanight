@@ -5,14 +5,15 @@ export async function GET(request: NextRequest) {
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    // Use ISO string for consistent date comparison in PostgreSQL via Prisma
+    const todayStr = today.toISOString().split('T')[0]
 
     // Get total count
     const totalCheckedIn = await prisma.attendance.count({
-      where: { eventDate: today }
+      where: { eventDate: new Date(todayStr) }
     })
 
     const totalStudents = await prisma.student.count()
-
 
     // Get checked-in students by grade
     const gradeData = []
@@ -22,14 +23,14 @@ export async function GET(request: NextRequest) {
           grade,
           attendance: {
             some: {
-              eventDate: today
+              eventDate: new Date(todayStr)
             }
           }
         },
         include: {
           attendance: {
             where: {
-              eventDate: today
+              eventDate: new Date(todayStr)
             }
           }
         },
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     // Get recent check-ins
     const recentCheckins = await prisma.attendance.findMany({
-      where: { eventDate: today },
+      where: { eventDate: new Date(todayStr) },
       include: {
         student: true
       },
@@ -75,14 +76,18 @@ export async function GET(request: NextRequest) {
       },
       gradeData,
       recentCheckins: recentCheckins.map((r: any) => ({
-        fullName: r.student.fullName,
-        grade: r.student.grade,
-        avatarUrl: r.student.avatarUrl,
+        fullName: r.student?.fullName || 'Unknown Student',
+        grade: r.student?.grade || 0,
+        avatarUrl: r.student?.avatarUrl || null,
         checkinTime: r.checkinTime
       }))
     })
-  } catch (error) {
-    console.error('Reports error:', error)
-    return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 })
+  } catch (error: any) {
+    console.error('CRITICAL REPORTS ERROR:', error.message, error.stack)
+    return NextResponse.json({
+      error: 'Failed to fetch reports',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 })
   }
 }
