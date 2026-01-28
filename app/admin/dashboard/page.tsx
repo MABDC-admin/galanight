@@ -234,7 +234,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4">
               <Users className="w-10 h-10 text-[#d4af37]" />
               <div>
-                <div className="text-3xl font-bold text-[#d4af37]">{stats.totalCheckedIn}</div>
+                <div className="text-3xl font-bold text-[#d4af37]">{stats?.totalCheckedIn ?? 0}</div>
                 <div className="text-white/50">Students Checked In</div>
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4">
               <Calendar className="w-10 h-10 text-[#d4af37]" />
               <div>
-                <div className="text-3xl font-bold text-[#d4af37]">{stats.totalStudents}</div>
+                <div className="text-3xl font-bold text-[#d4af37]">{stats?.totalStudents ?? 0}</div>
                 <div className="text-white/50">Total Students</div>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
           <div className="backdrop-blur-xl bg-black/40 border border-[#d4af37]/30 rounded-2xl p-6">
             <div className="flex items-center gap-4">
               <div className="text-3xl font-bold text-[#d4af37]">
-                {stats.totalStudents > 0 ? Math.round((stats.totalCheckedIn / stats.totalStudents) * 100) : 0}%
+                {(stats?.totalStudents ?? 0) > 0 ? Math.round(((stats?.totalCheckedIn ?? 0) / (stats?.totalStudents ?? 1)) * 100) : 0}%
               </div>
               <div className="text-white/50">Attendance Rate</div>
             </div>
@@ -380,11 +380,11 @@ export default function AdminDashboard() {
         <div className="backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-6">
           <h2 className="text-2xl text-[#d4af37] font-semibold mb-6">Grade Breakdown</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {stats.gradeData.map((grade) => (
+            {(stats?.gradeData ?? []).map((grade) => (
               <div key={grade.grade} className="text-center p-4 bg-white/5 rounded-xl">
-                <div className="text-2xl font-bold text-[#d4af37]">{grade.checkedIn}</div>
-                <div className="text-white/50 text-sm">Grade {grade.grade}</div>
-                <div className="text-white/30 text-xs mt-1">{grade.total} total</div>
+                <div className="text-2xl font-bold text-[#d4af37]">{grade?.checkedIn ?? 0}</div>
+                <div className="text-white/50 text-sm">Grade {grade?.grade}</div>
+                <div className="text-white/30 text-xs mt-1">{grade?.total ?? 0} total</div>
               </div>
             ))}
           </div>

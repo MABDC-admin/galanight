@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if DATABASE_URL is present
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not configured in environment variables')
+    }
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     // Use ISO string for consistent date comparison in PostgreSQL via Prisma
@@ -11,9 +16,15 @@ export async function GET(request: NextRequest) {
     // Get total count
     const totalCheckedIn = await prisma.attendance.count({
       where: { eventDate: new Date(todayStr) }
+    }).catch(e => {
+      console.error('Database query failed (attendance.count):', e.message)
+      return 0
     })
 
-    const totalStudents = await prisma.student.count()
+    const totalStudents = await prisma.student.count().catch(e => {
+      console.error('Database query failed (student.count):', e.message)
+      return 0
+    })
 
     // Get checked-in students by grade
     const gradeData = []
@@ -37,10 +48,16 @@ export async function GET(request: NextRequest) {
         orderBy: {
           fullName: 'asc'
         }
+      }).catch(e => {
+        console.error(`Database query failed (student.findMany for grade ${grade}):`, e.message)
+        return []
       })
 
       const gradeTotal = await prisma.student.count({
         where: { grade }
+      }).catch(e => {
+        console.error(`Database query failed (student.count for grade ${grade}):`, e.message)
+        return 0
       })
 
       gradeData.push({
@@ -66,6 +83,9 @@ export async function GET(request: NextRequest) {
         checkinTime: 'desc'
       },
       take: 10
+    }).catch(e => {
+      console.error('Database query failed (attendance.findMany recent):', e.message)
+      return []
     })
 
     return NextResponse.json({
@@ -84,10 +104,14 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('CRITICAL REPORTS ERROR:', error.message, error.stack)
+    // Always return a valid structure even on error to prevent UI crashes, 
+    // though the UI now has optional chaining anyway.
     return NextResponse.json({
       error: 'Failed to fetch reports',
       details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      summary: { total: 0, totalStudents: 0, gradeTotals: [] },
+      gradeData: [],
+      recentCheckins: []
     }, { status: 500 })
   }
 }

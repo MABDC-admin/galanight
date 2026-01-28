@@ -334,9 +334,9 @@ export default function Home() {
               <div className="relative backdrop-blur-xl bg-black/40 border-2 border-[#d4af37]/40 rounded-2xl p-6 text-center">
                 <div className="text-sm text-[#d4af37] uppercase tracking-widest mb-2">Grand Total</div>
                 <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#d4af37] via-[#f4e4bc] to-[#d4af37]" style={{ filter: 'drop-shadow(0 0 20px rgba(212,175,55,0.3))' }}>
-                  {reportData?.summary.total || 0}
+                  {reportData?.summary?.total ?? 0}
                   <span className="text-2xl text-white/30 mx-2">/</span>
-                  <span className="text-2xl text-white/50">{reportData?.summary.totalStudents || 0}</span>
+                  <span className="text-2xl text-white/50">{reportData?.summary?.totalStudents ?? 0}</span>
                 </div>
                 <div className="text-white/50 text-sm mt-2">Students Checked In</div>
 
@@ -344,7 +344,7 @@ export default function Home() {
                 <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[#d4af37] to-[#f4e4bc] rounded-full transition-all duration-500"
-                    style={{ width: `${reportData ? (reportData.summary.total / reportData.summary.totalStudents) * 100 : 0}%` }}
+                    style={{ width: `${reportData?.summary ? (reportData.summary.total / (reportData.summary.totalStudents || 1)) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -376,13 +376,13 @@ export default function Home() {
                 {/* Live Reports Tab */}
                 {activeTab === 'reports' && (
                   <div className="space-y-2">
-                    {reportData?.gradeData.slice().reverse().map((grade) => (
+                    {(reportData?.gradeData ?? []).slice().reverse().map((grade) => (
                       <div key={grade.grade} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                        <span className="text-white/80 font-medium">Grade {grade.grade}</span>
+                        <span className="text-white/80 font-medium">Grade {grade?.grade}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[#d4af37] font-bold">{grade.checkedIn}</span>
+                          <span className="text-[#d4af37] font-bold">{grade?.checkedIn ?? 0}</span>
                           <span className="text-white/30">/</span>
-                          <span className="text-white/50">{grade.total}</span>
+                          <span className="text-white/50">{grade?.total ?? 0}</span>
                         </div>
                       </div>
                     ))}
